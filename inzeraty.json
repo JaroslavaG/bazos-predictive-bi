@@ -18,5 +18,16 @@
     "cielova_cena": 100,
     "min_denny_narast": 3,
     "benchmark_videni": 90
+  },
+  {
+    "id": "197721729",
+    "kategoria": "sport_hracky",
+    "nazov": "Fisher-Price Psíkov stolček Smart Stages SK/EN",
+    "url": "https://deti.bazos.sk/inzerat/197721729/fisher-price-psikov-stolcek-smart-stages-sken.php",
+    "aktualna_cena": 25,
+    "cielova_cena": 20,
+    "min_denny_narast": 3,
+    "benchmark_videni": 70
   }
+  
 ]
