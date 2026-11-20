@@ -38,6 +38,7 @@ flowchart LR
 ## 🇸🇰 Slovenský popis projektu
 
 Automatizovaný analytický a predikčný BI nástroj na sledovanie výkonnosti inzerátov na portáli **Bazoš.sk / Bazoš.cz**. Spája cielený web scraping, kontextové dáta (lokálne počasie podľa PSČ, štátne sviatky SR/ČR, povýplatné nákupné okná) a konzervatívny predikčný model pravdepodobnosti predaja do 14 dní v prehľadnom dvojjazyčnom dashboarde (**SK / EN**).
+Projekt zastrešuje celý životný cyklus predaja osobných vecí – od AI prípravy dôveryhodného predajného textu na základe reálnych parametrov, fotiek a prieskumu trhových cien až po následný dátový monitoring výkonnosti inzerátu, odfiltrovanie vlastných návštev a predikciu pravdepodobnosti predaja.
 
 ### ✨ Hlavné funkcie
 * **🖼️ Automatické náhľady a ID-filtrované parsovanie (`monitor.py`):**
@@ -62,6 +63,7 @@ Automatizovaný analytický a predikčný BI nástroj na sledovanie výkonnosti 
 ## 🇬🇧 English Summary
 
 An end-to-end automated analytics and predictive intelligence dashboard built to monitor, evaluate, and optimize classified listings on **Bazoš.sk / Bazoš.cz**. The pipeline combines ID-scoped HTML scraping, real-time cover thumbnail & price extraction, local ZIP-code weather enrichment, Slovak & Czech holiday calendars, post-payday behavioral windows, and a 14-day sale probability model published via **GitHub Pages** with instant **SK / EN** language switching.
+The project covers the complete end-to-end resale lifecycle—from AI-assisted copywriting and market price benchmarking based on product specs and photos to automated performance tracking, self-traffic filtering, and 14-day sale probability modeling.
 
 ### ✨ Key Features
 * **🖼️ Live Cover Thumbnails & ID-Scoped Parsing:** Extracts the primary listing photo directly from Bazoš and counts photos strictly matching `{ad_id}.jpg` (ignoring *Similar/Other Listings* at the bottom of the page).
