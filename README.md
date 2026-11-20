@@ -1,66 +1,57 @@
-# 📊 Bazoš Predictive BI & Listing Monitor (SK & CZ)
+# 📊 Bazoš Predictive Sales & Pricing BI
 
-> 🇬🇧 **English Portfolio Case Study below** | 🇸🇰 **Slovenský popis projektu**
-
-🔗 **Živý BI Dashboard (GitHub Pages):** [https://jaroslavag.github.io/bazos-predictive-bi/](https://jaroslavag.github.io/bazos-predictive-bi/)
+Automatizovaný analytický a predikčný dashboard pre sledovanie výkonnosti inzerátov na portáli **Bazoš.sk / Bazoš.cz**. Projekt spája web scraping, kontextové dáta (lokálne PSČ počasie, štátne sviatky SR/ČR, výplatné okná) a predikčný model pravdepodobnosti predaja do 14 dní do prehľadného GitHub Pages dashboardu s podporou prepínania jazykov (**SK / EN**).
 
 ---
 
-## 🖼️ Ukážka živého BI Dashboardu / Dashboard Preview
+## ✨ Hlavné funkcie
 
-
-### 🇸🇰 Prehľad portfólia, predikcie predaja a lokálneho počasia (SK)
-![Bazoš Predictive BI Dashboard SK](assets/dashboard-sk.png)
-
-### 🇬🇧 Interaktívne grafy vývoja a bilingválne rozhranie (EN)
-![Bazoš Predictive BI Charts EN](assets/dashboard-charts-en.png)
-
----
-
-## ⚙️ Architektúra riešenia (End-to-End CI/CD & BI Pipeline)
-
-```mermaid
-flowchart LR
-    A[Bazoš.sk / .cz HTML] -->|BeautifulSoup4 Scraper| B(monitor.py)
-    C[Open-Meteo API<br/>Auto-PSČ & GPS] --> B
-    D[SR & ČR Kalendár<br/>Sviatky + Payday] --> B
-    E[test_monitor.py<br/>8 Unit & Int. Testov] -->|GitHub Actions CI| B
-    B -->|Časové rady| F[(historia_videni.csv)]
-    B -->|Generovanie UI| G[index.html + i18n.js<br/>GitHub Pages]
-    B -->|Detekcia zlomu| H[SMTP E-mail Alert]
-```
+* **🖼️ Automatické náhľady a presná extrakcia z Bazoša (`monitor.py`):**
+  * Automaticky sťahuje **titulnú fotku** každého inzerátu priamo zo štruktúry Bazoša bez ukladania obrázkov do repozitára.
+  * Počíta **presný počet fotografií** prísne podľa ID konkrétneho inzerátu (ignoruje odporúčané a podobné inzeráty v spodnej časti stránky).
+* **💶 Inteligentná detekcia režimu a výšky ceny (`extract_live_price`):**
+  * Rozlišuje medzi číselnou cenou v tabuľke a režimom **„V texte“**.
+  * Ak je na Bazoši nastavené *„V texte“*, automaticky vytiahne aktuálnu sumu priamo z popisu inzerátu, takže zmena ceny na Bazoši sa okamžite premietne do dashboardu aj výpočtu cenovej elasticity bez nutnosti ručne prepisovať konfiguráciu.
+* **📈 Predikčný model pravdepodobnosti predaja (14-dňové okno):**
+  * Vyhodnocuje skóre kvality inzerátu (počet fotiek, prítomnosť rozmerov/hmotnosti, dĺžku popisu), denné tempo videní (*velocity*), nasýtenie publika oproti benchmarku kategórie aj sezónne vplyvy.
+* **🌍 Auto-PSČ Geolocation & Počasie (Open-Meteo API):**
+  * Z detailu inzerátu automaticky extrahuje PSČ, mesto a GPS súradnice a priraďuje aktuálne lokálne počasie (dážď/sychravo zvyšuje návštevnosť interiérových kategórií, slnečné víkendy zas športových).
+* **📅 Kalendárny & Behaviorálny kontext (SR & ČR):**
+  * Zohľadňuje pracovné dni, víkendy, pohyblivé aj pevné štátne sviatky SR a ČR a silné povýplatné obdobie (10. – 18. deň v mesiaci).
+* **📉 Analýza cenovej elasticity:**
+  * Pri zmene ponukovej ceny automaticky vypočíta percentuálnu zmenu denného záujmu pred a po úprave ceny.
+* **🌐 Dvojjazyčné rozhranie SK / EN (`i18n.js`):**
+  * Bezpečný klientsky prekladač textových uzlov v reálnom čase bez narušenia interaktívnych grafov `Chart.js`.
+* **🔔 Automatické e-mailové notifikácie:**
+  * Pri poklese denného záujmu pod stanovené minimum alebo pri dosiahnutí cenového zlomu odošle analytický report s odporúčaným ďalším krokom.
 
 ---
 
-## 🇸🇰 Slovenský popis projektu
+## 🗂️ Štruktúra repozitára
 
-Automatizovaný **End-to-End Business Intelligence & Predictive Pricing** systém na sledovanie návštevnosti, cenovej elasticity a realistickej pravdepodobnosti predaja súkromných inzerátov na portáloch **Bazoš.sk** a **Bazoš.cz**. Projekt beží úplne bezplatne na **GitHub Actions (CI/CD)** a publikuje živý analytický dashboard s prepínačom jazykov (**SK / EN**) cez **GitHub Pages**.
-
-### ✨ Hlavné funkcie
-* **Presná geolokácia z PSČ inzerátu:** Skript automaticky vyčíta PSČ (`XXX XX`), mesto, krajinu (SR/ČR) a GPS súradnice priamo zo štruktúry inzerátu na Bazoši a priradí lokálne počasie cez **Open-Meteo API**.
-* **Kalendárny & Payday kontext (SR & ČR):** Rozpoznáva víkendy, fixné aj pohyblivé štátne sviatky pre Slovensko aj Česko (vrátane algoritmického výpočtu Veľkej noci) a sleduje výplatné okná (10. – 18. deň v mesiaci).
-* **Konzervatívny predikčný model predaja (%):** Vypočítava realistickú pravdepodobnosť predaja do 14 dní na základe kategórie produktu, rýchlosti videní (*View Velocity*), skóre kvality inzerátu (fotky + rozmery), počasia a kalendára.
-* **Detekcia cenovej elasticity:** Pri úprave ceny v `inzeraty.json` automaticky zachytí zmenu a vyhodnotí koeficient reakcie publika (% nárast alebo pokles denných videní po zľave).
-* **Bilingválny Dashboard (`SK` / `EN`):** Živá stránka (`index.html` + neinvazívny lokalizačný modul `i18n.js`) s interaktívnymi grafmi (**Chart.js**), štatistickým manuálom a auditným denníkom meraní.
-* **CI/CD & Automatizované testy:** Pred každým zberom dát prebehne sada 8 unit a integračných testov (`test_monitor.py`).
-
-### 📂 Štruktúra repozitára
-* `monitor.py` – Hlavný ETL a analytický engine (scraping, geokódovanie PSČ, počasie, kalendár SR/ČR, predikčný model, cenová elasticita, generovanie HTML a SMTP e-mailov).
-* `i18n.js` – Samostatný lokalizačný modul zabezpečujúci okamžité prepínanie rozhrania dashboardu medzi **SK** a **EN** bez narušenia grafov.
-* `test_monitor.py` – Sada 8 automatizovaných testov (výpočet Veľkej noci, SR/ČR sviatky, Payday okno, HTML parser a PSČ, predikčný model, cenová elasticita, generovanie dashboardu).
-* `inzeraty.json` – Konfiguračný zoznam sledovaných inzerátov (`id`, `kategoria`, `aktualna_cena`, `cielova_cena`, `benchmark_videni`).
-* `historia_videni.csv` – Automaticky generovaná a aktualizovaná časová rada denných meraní.
-* `.github/workflows/check_ads.yml` – Automatický CI/CD plánovač úloh (testy + denný zber dát o 18:00 SEČ).
+| Súbor | Popis |
+| :--- | :--- |
+| `monitor.py` | Hlavný Python skript – sťahuje dáta z Bazoša, vyhodnocuje metriky, ukladá históriu a generuje `index.html`. |
+| `inzeraty.json` | Konfiguračný zoznam sledovaných inzerátov (ID, kategória, názov, URL, východisková a cieľová cena, benchmark). |
+| `historia_videni.csv` | Auditný denník denných meraní (dátum, PSČ lokalita, počasie, videnia, denný prírastok, cena, šanca predaja). |
+| `index.html` | Automaticky generovaný responzívny BI dashboard s kartami inzerátov, grafmi (`Chart.js`) a auditnou tabuľkou. |
+| `i18n.js` | Modul pre okamžité prepínanie jazyka dashboardu medzi slovenčinou (`🇸🇰 SK`) a angličtinou (`🇬🇧 EN`). |
+| `.github/workflows/check_ads.yml` | GitHub Actions CI/CD pipeline na pravidelné spúšťanie unit testov, monitoringu a publikovanie zmien. |
 
 ---
 
-## 🇬🇧 English Overview (Portfolio Case Study)
+## ⚙️ Ako pridať sledovaný inzerát
 
-An automated, serverless **Predictive Pricing & Behavioral Analytics Pipeline** designed to track listing performance, view velocity, price elasticity, and 14-day conversion probability on **Bazoš.sk** and **Bazoš.cz**. Powered by **Python**, **GitHub Actions (CI/CD)**, **Open-Meteo API**, and **GitHub Pages**.
+Všetky sledované položky sa spravujú v súbore **`inzeraty.json`**. Pre pridanie nového inzerátu stačí vložiť nový JSON objekt:
 
-### 🚀 Key Engineering & Analytics Features
-* **Automated ZIP/GPS Geolocation & Weather Enrichment:** Parses exact postal codes (`XXX XX`), city names, country codes (SK/CZ), and GPS coordinates directly from listing HTML, enriching daily metrics with localized weather data via **Open-Meteo API**.
-* **Calendar & Behavioral Feature Engineering:** Incorporates Slovak & Czech public holidays (including algorithmic Easter calculation), weekend dynamics, and post-payday purchasing windows (10th–18th of each month) to prevent false-positive traffic alerts.
-* **Conservative Sale Probability & Price Elasticity:** Computes a calibrated 14-day sale probability score based on category benchmarks, view velocity, and listing quality (photo count & dimension metadata), while measuring audience reaction lift (%) after price adjustments.
-* **Bilingual Executive BI Dashboard (`SK` / `EN`):** Self-updating static web dashboard (`index.html` + DOM-safe `i18n.js` switcher) featuring interactive **Chart.js** visualizations, category playbooks, and a full measurement audit log.
-* **Automated CI/CD Testing Pipeline:** Runs an 8-test `unittest` suite (`test_monitor.py`) prior to every scheduled data ingestion cycle.
+```json
+{
+  "id": "197721729",
+  "kategoria": "sport_hracky",
+  "nazov": "Fisher-Price Psíkov stolček Smart Stages SK/EN",
+  "url": "[https://deti.bazos.sk/inzerat/197721729/fisher-price-psikov-stolcek-smart-stages-sken.php](https://deti.bazos.sk/inzerat/197721729/fisher-price-psikov-stolcek-smart-stages-sken.php)",
+  "aktualna_cena": 25,
+  "cielova_cena": 20,
+  "min_denny_narast": 3,
+  "benchmark_videni": 70
+}
