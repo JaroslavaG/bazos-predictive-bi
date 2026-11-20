@@ -36,7 +36,7 @@ class TestBazosPredictiveBI(unittest.TestCase):
         self.assertTrue(monitor.get_calendar_context(datetime(2026, 11, 14), "SK")["is_payday_window"])
         self.assertFalse(monitor.get_calendar_context(datetime(2026, 11, 25), "SK")["is_payday_window"])
 
-def test_04_bazos_html_parsing_and_location(self):
+    def test_04_bazos_html_parsing_and_location(self):
         """Overí parsovanie videní, PSČ, GPS súradníc a kvality inzerátu z HTML."""
         sample_html = """
         <html><body>
@@ -70,15 +70,13 @@ def test_04_bazos_html_parsing_and_location(self):
         self.assertTrue(res["has_dimensions"])
         self.assertGreaterEqual(res["quality_score"], 75)
 
-    
-
     def test_05_inactive_ad_detection(self):
         """Overí bezpečné rozpoznanie vymazaného inzerátu."""
         deleted_html = "<html><body><div>Inzerát bol vymazaný.</div></body></html>"
         res = monitor.parse_bazos_html(deleted_html, "https://deti.bazos.sk/inzerat/000/test.php")
         self.assertEqual(res["status"], "inactive")
 
-def test_06_sale_probability_model(self):
+    def test_06_sale_probability_model(self):
         """Overí konzervatívny pravdepodobnostný model (rast pri dobrom tempe vs. pokles pri únave)."""
         ad = {"kategoria": "kocik", "benchmark_videni": 150, "aktualna_cena": 260, "cielova_cena": 240}
         cal_sunday_payday = monitor.get_calendar_context(datetime(2026, 11, 15, 19, 0), "SK")
@@ -119,7 +117,7 @@ def test_06_sale_probability_model(self):
             "datum": "2026-11-20", "krajina": "SK", "lokalita": "040 23 Košice (SK)",
             "den": "Piatok", "typ_dna": "Pracovný deň (SK)", "pocasie": "⛅ Oblačno (8°C, 0 mm)",
             "id": "197710713", "kategoria": "kocik", "nazov": "Adamex Barletta 3v1",
-            "videnia": "25", "narast": "5", "cena": "260", "sanca_predaja_pct": "84"
+            "videnia": "25", "narast": "5", "cena": "260", "sanca_predaja_pct": "48"
         }]
         details = {"views": 25, "price_mode": "V texte", "quality_score": 88, "img_count": 12}
         cal = monitor.get_calendar_context(datetime(2026, 11, 20), "SK")
