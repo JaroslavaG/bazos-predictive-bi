@@ -208,12 +208,16 @@ def get_weather_for_location(loc):
         return {"location_label": f"{loc['psc']} {loc['city']}", "summary": "Neznáme", "is_bad_weather": False}
 
 
-def parse_bazos_html(html, url, ad_id):
+def parse_bazos_html(html, url, ad_id=""):
     soup = BeautifulSoup(html, 'html.parser')
     text = soup.get_text()
 
     if "Inzerát bol vymazaný" in text or "Inzerát neexistuje" in text:
         return {"status": "inactive"}
+
+    if not ad_id:
+        m_id = re.search(r'/inzerat/(\d+)/', url)
+        ad_id = m_id.group(1) if m_id else ""
 
     match_views = re.search(r'Videlo:\s*(\d+)\s*ľudí', text)
     views = int(match_views.group(1)) if match_views else 0
@@ -228,20 +232,31 @@ def parse_bazos_html(html, url, ad_id):
     price_mode = numeric_price if numeric_price else "V texte"
 
     # 2. Presný počet fotiek a titulná fotka iba pre dané ID inzerátu
-    thumb_imgs = set(
-        img['src'].split('?')[0] for img in soup.find_all('img', src=True)
-        if re.search(rf'/img/\d+t/.*?/{re.escape(ad_id)}\.jpg', img['src'])
-    )
-    full_imgs = set(
-        img['src'].split('?')[0] for img in soup.find_all('img', src=True)
-        if re.search(rf'/img/\d+/.*?/{re.escape(ad_id)}\.jpg', img['src'])
-    )
+    if ad_id:
+        thumb_imgs = set(
+            img['src'].split('?')[0] for img in soup.find_all('img', src=True)
+            if re.search(rf'/img/\d+t/.*?/{re.escape(ad_id)}\.jpg', img['src'])
+        )
+        full_imgs = set(
+            img['src'].split('?')[0] for img in soup.find_all('img', src=True)
+            if re.search(rf'/img/\d+/.*?/{re.escape(ad_id)}\.jpg', img['src'])
+        )
+    else:
+        thumb_imgs = set(
+            img['src'].split('?')[0] for img in soup.find_all('img', src=True)
+            if re.search(r'/img/\d+t/', img['src'])
+        )
+        full_imgs = set(
+            img['src'].split('?')[0] for img in soup.find_all('img', src=True)
+            if re.search(r'/img/\d+/', img['src'])
+        )
+
     img_count = len(thumb_imgs) if thumb_imgs else len(full_imgs)
 
     # Titulná fotka (hlavný obrázok /img/1/.../{ad_id}.jpg)
     thumbnail_url = ""
     for src in sorted(full_imgs):
-        if f"/img/1/" in src:
+        if "/img/1/" in src:
             thumbnail_url = src
             break
     if not thumbnail_url and full_imgs:
@@ -266,7 +281,7 @@ def parse_bazos_html(html, url, ad_id):
     }
 
 
-def get_ad_details(url, ad_id):
+def get_ad_details(url, ad_id=""):
     req = urllib.request.Request(
         url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
     )
