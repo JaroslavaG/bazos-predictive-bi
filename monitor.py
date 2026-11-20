@@ -208,6 +208,36 @@ def get_weather_for_location(loc):
         return {"location_label": f"{loc['psc']} {loc['city']}", "summary": "Neznáme", "is_bad_weather": False}
 
 
+def extract_live_price(soup, text):
+    """Vytiahne režim ceny z tabuľky ('V texte' vs. suma) aj reálnu sumu priamo zo stránky inzerátu."""
+    price_mode = "V texte"
+    parsed_price = None
+
+    # 1. Kontrola bunky "Cena:" v hlavnej tabuľke inzerátu (ignoruje odporúčané inzeráty dole)
+    cena_label_td = soup.find('td', string=re.compile(r'^\s*Cena:\s*$', re.I))
+    if cena_label_td:
+        cena_val_td = cena_label_td.find_next_sibling('td')
+        if cena_val_td:
+            val_text = cena_val_td.get_text(" ", strip=True)
+            m_num = re.search(r'(\d+)\s*(€|Kč)', val_text)
+            if m_num:
+                price_mode = val_text
+                parsed_price = int(m_num.group(1))
+
+    # 2. Ak je cena "V texte", vytiahneme konkrétnu sumu z popisu daného inzerátu
+    if parsed_price is None:
+        text_before_footer = text.split("Ďalšie inzeráty")[0].split("Podobné inzeráty")[0]
+        m_explicit = re.search(r'(?:Cena|cena)\s*[:\-]?\s*(\d+)\s*(?:€|eur|Kč)', text_before_footer)
+        if m_explicit:
+            parsed_price = int(m_explicit.group(1))
+        else:
+            m_any = re.search(r'\b(\d{1,4})\s*(?:€|eur|Kč)\b', text_before_footer)
+            if m_any:
+                parsed_price = int(m_any.group(1))
+
+    return price_mode, parsed_price
+
+
 def parse_bazos_html(html, url, ad_id=""):
     soup = BeautifulSoup(html, 'html.parser')
     text = soup.get_text()
@@ -222,16 +252,9 @@ def parse_bazos_html(html, url, ad_id=""):
     match_views = re.search(r'Videlo:\s*(\d+)\s*ľudí', text)
     views = int(match_views.group(1)) if match_views else 0
 
-    # 1. Presná detekcia ceny z hlavnej tabuľky (ignoruje slová "V texte" z podobných inzerátov dole)
-    numeric_price = None
-    for b_tag in soup.find_all('b'):
-        b_text = b_tag.get_text(" ", strip=True)
-        if re.search(r'\d+\s*(€|Kč)', b_text):
-            numeric_price = b_text
-            break
-    price_mode = numeric_price if numeric_price else "V texte"
+    price_mode, parsed_price = extract_live_price(soup, text)
 
-    # 2. Presný počet fotiek a titulná fotka iba pre dané ID inzerátu
+    # Presný počet fotiek a titulná fotka iba pre dané ID inzerátu
     if ad_id:
         thumb_imgs = set(
             img['src'].split('?')[0] for img in soup.find_all('img', src=True)
@@ -253,7 +276,6 @@ def parse_bazos_html(html, url, ad_id=""):
 
     img_count = len(thumb_imgs) if thumb_imgs else len(full_imgs)
 
-    # Titulná fotka (hlavný obrázok /img/1/.../{ad_id}.jpg)
     thumbnail_url = ""
     for src in sorted(full_imgs):
         if "/img/1/" in src:
@@ -273,6 +295,7 @@ def parse_bazos_html(html, url, ad_id=""):
         "status": "active",
         "views": views,
         "price_mode": price_mode,
+        "parsed_price": parsed_price,
         "quality_score": quality_score,
         "img_count": img_count,
         "thumbnail_url": thumbnail_url,
@@ -369,7 +392,7 @@ def calculate_sale_probability(ad, views, daily_gain, days_active, velocity, qua
     return max(10, min(88, round(prob)))
 
 
-def build_automated_summary(ad, details, daily_gain, days_active, velocity, cal, weather, elasticity=None):
+def build_automated_summary(ad, details, effective_price, daily_gain, days_active, velocity, cal, weather, elasticity=None):
     cat_key = ad.get("kategoria", "kocik")
     profile = CATEGORY_PROFILES.get(cat_key, CATEGORY_PROFILES["kocik"])
     benchmark = ad.get("benchmark_videni", profile["default_benchmark"])
@@ -400,7 +423,7 @@ def build_automated_summary(ad, details, daily_gain, days_active, velocity, cal,
         )
     else:
         meaning = (
-            f"Prekročenie <strong>{views} videní</strong> ({pct_bench} % benchmarku) bez predaja značí vyčerpanie publika pri cene <strong>{ad['aktualna_cena']} €</strong>. "
+            f"Prekročenie <strong>{views} videní</strong> ({pct_bench} % benchmarku) bez predaja značí vyčerpanie publika pri cene <strong>{effective_price} €</strong>. "
             f"Pravdepodobnosť predaja bez zásahu je <strong>{sale_prob} %</strong>.{elasticity_note}"
         )
 
@@ -419,10 +442,10 @@ def build_automated_summary(ad, details, daily_gain, days_active, velocity, cal,
                 f"Prírastok klesol na +{daily_gain} videní ({cal['day_type']}, {weather['summary']}). "
                 f"Odporúčam inzerát vymazať, nahodiť nanovo v čase <strong>{profile['peak_window']}</strong> a zvážiť cenu <strong>{ad['cielova_cena']} €</strong>{payday_note}."
             )
-    elif views >= benchmark and ad["aktualna_cena"] > ad["cielova_cena"]:
+    elif views >= benchmark and effective_price > ad["cielova_cena"]:
         status = ("warn", f"💡 Cenový zlom ({sale_prob}% šanca)")
         rec = (
-            f"Inzerát videlo už {views} ľudí. Zníž cenu v texte z <strong>{ad['aktualna_cena']} €</strong> na <strong>{ad['cielova_cena']} €</strong> "
+            f"Inzerát videlo už {views} ľudí. Zníž cenu v texte z <strong>{effective_price} €</strong> na <strong>{ad['cielova_cena']} €</strong> "
             f"alebo prepni režim 'V texte' na konkrétnu sumu{payday_note}."
         )
     elif days_active >= 14:
@@ -437,6 +460,7 @@ def build_automated_summary(ad, details, daily_gain, days_active, velocity, cal,
         "benchmark": benchmark,
         "pct_benchmark": min(pct_bench, 100),
         "sale_prob": sale_prob,
+        "effective_price": effective_price,
         "meaning": meaning,
         "rec": rec,
         "status_type": status[0],
@@ -490,8 +514,8 @@ def generate_html_dashboard(ads, rows, summaries, ad_contexts, filepath=DASHBOAR
     
     cumulative_datasets, daily_datasets = [], []
     cards_html, table_rows_html = "", ""
-    total_asking = sum(ad['aktualna_cena'] for ad in ads)
-    total_target = sum(ad['cielova_cena'] for ad in ads)
+    total_asking = 0
+    total_target = 0
     total_views_all, total_daily_gain, prob_list = 0, 0, []
 
     for idx, ad in enumerate(ads):
@@ -502,6 +526,10 @@ def generate_html_dashboard(ads, rows, summaries, ad_contexts, filepath=DASHBOAR
         ad_rows = sorted([r for r in rows if r['id'] == ad_id], key=lambda x: x['datum'])
         s = summaries[ad_id]
         ctx = ad_contexts[ad_id]
+        eff_price = s["effective_price"]
+
+        total_asking += eff_price
+        total_target += ad['cielova_cena']
         
         latest_views = int(ad_rows[-1]['videnia']) if ad_rows else 0
         latest_gain = int(ad_rows[-1]['narast']) if ad_rows else 0
@@ -553,8 +581,8 @@ def generate_html_dashboard(ads, rows, summaries, ad_contexts, filepath=DASHBOAR
                 </div>
                 <div class="metric-box">
                     <span class="m-label">Ponuková cena</span>
-                    <span class="m-val">{ad['aktualna_cena']} €</span>
-                    <span class="m-sub">Cieľ: {ad['cielova_cena']} € (vankúš {ad['aktualna_cena'] - ad['cielova_cena']} €)</span>
+                    <span class="m-val">{eff_price} €</span>
+                    <span class="m-sub">Cieľ: {ad['cielova_cena']} € (vankúš {eff_price - ad['cielova_cena']} €)</span>
                 </div>
                 <div class="metric-box">
                     <span class="m-label">Kvalita inzerátu</span>
@@ -822,6 +850,9 @@ def main():
         cal = get_calendar_context(now_dt, country=loc["country"])
         weather = get_weather_for_location(loc)
 
+        # Použije živú cenu vytiahnutú priamo zo stránky/textu inzerátu (ak existuje), inak z inzeraty.json
+        effective_price = details["parsed_price"] if details.get("parsed_price") is not None else ad['aktualna_cena']
+
         views = details["views"]
         past_rows = [r for r in rows if r['id'] == ad_id and r['datum'] != today_str]
         prev_views = int(past_rows[-1]['videnia']) if past_rows else 0
@@ -829,13 +860,13 @@ def main():
 
         ad_rows_temp = past_rows + [{
             'datum': today_str, 'videnia': str(views),
-            'narast': str(daily_gain), 'cena': str(ad['aktualna_cena'])
+            'narast': str(daily_gain), 'cena': str(effective_price)
         }]
         days_active = max(len(ad_rows_temp), 1)
         velocity = round(views / days_active, 1)
-        elasticity = analyze_price_elasticity(ad_rows_temp, ad['aktualna_cena'])
+        elasticity = analyze_price_elasticity(ad_rows_temp, effective_price)
 
-        summary = build_automated_summary(ad, details, daily_gain, days_active, velocity, cal, weather, elasticity)
+        summary = build_automated_summary(ad, details, effective_price, daily_gain, days_active, velocity, cal, weather, elasticity)
         summaries[ad_id] = summary
         ad_contexts[ad_id] = {"details": details, "cal": cal, "weather": weather}
 
@@ -844,7 +875,7 @@ def main():
             'datum': today_str, 'krajina': loc['country'], 'lokalita': weather['location_label'],
             'den': cal['day_name'], 'typ_dna': cal['day_type'], 'pocasie': weather['summary'],
             'id': ad_id, 'kategoria': ad.get('kategoria', 'kocik'), 'nazov': ad['nazov'],
-            'videnia': str(views), 'narast': str(daily_gain), 'cena': str(ad['aktualna_cena']),
+            'videnia': str(views), 'narast': str(daily_gain), 'cena': str(effective_price),
             'sanca_predaja_pct': str(summary['sale_prob'])
         })
 
