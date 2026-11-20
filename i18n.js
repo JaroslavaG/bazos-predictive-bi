@@ -4,9 +4,7 @@
  */
 (function () {
   const EXACT_DICT = {
-    "SR & ČR Engine": "SK & CZ Engine",
-    "Auto-PSČ Počasie": "Auto-ZIP Weather",
-    "SR/ČR Sviatky & Payday": "SK/CZ Holidays & Payday",
+
     "Ponuková hodnota": "Asking Portfolio Value",
     "Cieľová hodnota:": "Target Value:",
     "Celkový organický zásah": "Total Organic Reach",
@@ -52,6 +50,9 @@
   };
 
   const SUBSTRING_PAIRS = [
+    ["SR & ČR Engine": "SK & CZ Engine"],
+    ["Auto-PSČ Počasie": "Auto-ZIP Weather"],
+    ["SR/ČR Sviatky & Payday": "SK/CZ Holidays & Payday"],
     ["Kočíky & Príslušenstvo", "Strollers & Accessories"],
     ["Autosedačky & Bezpečnosť", "Car Seats & Safety"],
     ["Detské oblečenie & Obuv", "Kids Clothing & Footwear"],
