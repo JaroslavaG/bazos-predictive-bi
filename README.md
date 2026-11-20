@@ -8,7 +8,6 @@
 
 ## 🖼️ Ukážka živého BI Dashboardu / Dashboard Preview
 
-*(Tip: Nahraj 2 výrezy obrazovky z tvojho prehliadača do priečinka `assets/` pod týmito názvami a GitHub ich tu automaticky zobrazí.)*
 
 ### 🇸🇰 Prehľad portfólia, predikcie predaja a lokálneho počasia (SK)
 ![Bazoš Predictive BI Dashboard SK](assets/dashboard-sk.png)
