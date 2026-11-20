@@ -392,7 +392,10 @@ def calculate_sale_probability(ad, views, daily_gain, days_active, velocity, qua
     return max(10, min(88, round(prob)))
 
 
-def build_automated_summary(ad, details, effective_price, daily_gain, days_active, velocity, cal, weather, elasticity=None):
+def build_automated_summary(ad, details, daily_gain, days_active, velocity, cal, weather, elasticity=None, effective_price=None):
+    if effective_price is None:
+        effective_price = details.get("parsed_price") if details.get("parsed_price") is not None else ad["aktualna_cena"]
+
     cat_key = ad.get("kategoria", "kocik")
     profile = CATEGORY_PROFILES.get(cat_key, CATEGORY_PROFILES["kocik"])
     benchmark = ad.get("benchmark_videni", profile["default_benchmark"])
@@ -866,8 +869,10 @@ def main():
         velocity = round(views / days_active, 1)
         elasticity = analyze_price_elasticity(ad_rows_temp, effective_price)
 
-        summary = build_automated_summary(ad, details, effective_price, daily_gain, days_active, velocity, cal, weather, elasticity)
-        summaries[ad_id] = summary
+summary = build_automated_summary(
+            ad, details, daily_gain, days_active, velocity, cal, weather, elasticity, effective_price=effective_price
+        )
+                summaries[ad_id] = summary
         ad_contexts[ad_id] = {"details": details, "cal": cal, "weather": weather}
 
         rows = [r for r in rows if not (r['id'] == ad_id and r['datum'] == today_str)]
