@@ -478,7 +478,7 @@ def load_all_rows(filepath=HISTORY_FILE):
 def save_all_rows(rows, filepath=HISTORY_FILE):
     fieldnames = [
         'datum', 'krajina', 'lokalita', 'den', 'typ_dna', 'pocasie',
-        'id', 'kategoria', 'nazov', 'videnia', 'narast', 'cena', 'sanca_predaja_pct'
+        'id', 'kategoria', 'nazov', 'videnia', 'narast', 'cena', 'sanca_predaja_pct', 'bot_zobrazenia'
     ]
     with open(filepath, mode='w', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -852,10 +852,24 @@ def main():
 
         effective_price = details["parsed_price"] if details.get("parsed_price") is not None else ad['aktualna_cena']
 
-        views = details["views"]
         past_rows = [r for r in rows if r['id'] == ad_id and r['datum'] != today_str]
+        today_existing = [r for r in rows if r['id'] == ad_id and r['datum'] == today_str]
+
+        # Odpočítanie doterajších vlastných spustení skriptu (bot_zobrazenia) + aktuálny beh (+1)
+        prev_bot_hits = 0
+        if today_existing and today_existing[-1].get('bot_zobrazenia'):
+            prev_bot_hits = int(today_existing[-1]['bot_zobrazenia'])
+        elif past_rows:
+            prev_bot_hits = int(past_rows[-1].get('bot_zobrazenia') or len(past_rows))
+
+        current_bot_hits = prev_bot_hits + 1
+        views = max(0, details["views"] - current_bot_hits)
+
         prev_views = int(past_rows[-1]['videnia']) if past_rows else 0
-        daily_gain = views - prev_views if past_rows else views
+        daily_gain = max(0, views - prev_views) if past_rows else views
+
+        details_clean = dict(details)
+        details_clean["views"] = views
 
         ad_rows_temp = past_rows + [{
             'datum': today_str, 'videnia': str(views),
@@ -866,10 +880,10 @@ def main():
         elasticity = analyze_price_elasticity(ad_rows_temp, effective_price)
 
         summary = build_automated_summary(
-            ad, details, daily_gain, days_active, velocity, cal, weather, elasticity, effective_price=effective_price
+            ad, details_clean, daily_gain, days_active, velocity, cal, weather, elasticity, effective_price=effective_price
         )
         summaries[ad_id] = summary
-        ad_contexts[ad_id] = {"details": details, "cal": cal, "weather": weather}
+        ad_contexts[ad_id] = {"details": details_clean, "cal": cal, "weather": weather}
 
         rows = [r for r in rows if not (r['id'] == ad_id and r['datum'] == today_str)]
         rows.append({
@@ -877,7 +891,8 @@ def main():
             'den': cal['day_name'], 'typ_dna': cal['day_type'], 'pocasie': weather['summary'],
             'id': ad_id, 'kategoria': ad.get('kategoria', 'kocik'), 'nazov': ad['nazov'],
             'videnia': str(views), 'narast': str(daily_gain), 'cena': str(effective_price),
-            'sanca_predaja_pct': str(summary['sale_prob'])
+            'sanca_predaja_pct': str(summary['sale_prob']),
+            'bot_zobrazenia': str(current_bot_hits)
         })
 
         if summary["status_type"] in ["danger", "warn"]:
