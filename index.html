@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bazoš Predictive BI | SR & ČR Sviatky, PSČ Počasie & Predikcia Predaja</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --bg: #f8fafc; --surface: #ffffff; --navy: #0f172a; --slate: #475569; --muted: #94a3b8; --border: #e2e8f0; --primary: #2563eb; }
+        * { box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--navy); margin: 0; line-height: 1.5; }
+        .topbar { background: var(--navy); color: #fff; padding: 18px 24px; }
+        .topbar-inner { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+        .brand { display: flex; align-items: center; gap: 10px; }
+        .brand h1 { margin: 0; font-size: 18px; font-weight: 700; }
+        .tag-pro { background: #2563eb; font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 600; text-transform: uppercase; }
+        .context-pill { background: #1e293b; border: 1px solid #334155; padding: 6px 12px; border-radius: 8px; font-size: 12px; color: #e2e8f0; }
+        .container { max-width: 1200px; margin: 24px auto; padding: 0 20px; }
+        .kpi-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .kpi-card { background: var(--surface); padding: 18px 20px; border-radius: 10px; border: 1px solid var(--border); }
+        .kpi-title { font-size: 11px; font-weight: 600; color: var(--slate); text-transform: uppercase; }
+        .kpi-value { font-size: 24px; font-weight: 700; color: var(--navy); margin: 6px 0 2px 0; }
+        .kpi-desc { font-size: 12px; color: var(--muted); }
+        .ads-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 20px; margin-bottom: 24px; }
+        .ad-card { background: var(--surface); border-radius: 12px; padding: 22px; border: 1px solid var(--border); display: flex; flex-direction: column; justify-content: space-between; }
+        .ad-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
+        .ad-id { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; }
+        .ad-header h3 { margin: 4px 0 0 0; font-size: 16px; font-weight: 700; }
+        .badge { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 99px; white-space: nowrap; }
+        .badge-ok { background: #dcfce7; color: #166534; }
+        .badge-info { background: #e0f2fe; color: #075985; }
+        .badge-warn { background: #fef3c7; color: #92400e; }
+        .badge-danger { background: #fee2e2; color: #991b1b; }
+        .progress-wrap { margin-bottom: 16px; }
+        .progress-labels { display: flex; justify-content: space-between; font-size: 12px; color: var(--slate); margin-bottom: 5px; }
+        .progress-bar { height: 8px; background: #e2e8f0; border-radius: 99px; overflow: hidden; }
+        .progress-fill { height: 100%; border-radius: 99px; }
+        .metrics-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
+        .metric-box { background: #f8fafc; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); }
+        .m-label { display: block; font-size: 11px; color: var(--slate); }
+        .m-val { display: block; font-size: 19px; font-weight: 700; color: var(--navy); margin: 2px 0; }
+        .m-val small { font-size: 12px; font-weight: 500; color: var(--slate); }
+        .m-sub { display: block; font-size: 11px; color: var(--muted); }
+        .summary-box { background: #f8fafc; border: 1px solid #cbd5e1; border-left: 4px solid var(--primary); padding: 12px 14px; border-radius: 8px; font-size: 12.5px; color: #1e293b; margin-bottom: 16px; }
+        .summary-box p { margin: 0 0 8px 0; }
+        .summary-box p:last-child { margin-bottom: 0; }
+        .season-note { color: var(--slate); font-size: 11.5px; border-top: 1px dashed #cbd5e1; padding-top: 8px; }
+        .ad-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 12px; border-top: 1px solid var(--border); font-size: 12px; color: var(--slate); }
+        .btn-link { color: var(--primary); font-weight: 600; text-decoration: none; }
+        .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(460px, 1fr)); gap: 20px; margin-bottom: 24px; }
+        .panel { background: var(--surface); padding: 22px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 20px; }
+        .panel h2 { margin: 0 0 16px 0; font-size: 15px; font-weight: 700; }
+        table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+        th { text-align: left; padding: 10px 10px; background: #f8fafc; color: var(--slate); font-weight: 600; border-bottom: 1px solid var(--border); }
+        td { padding: 10px 10px; border-bottom: 1px solid var(--border); }
+        .pill-gain { background: #eff6ff; color: #1d4ed8; padding: 2px 7px; border-radius: 99px; font-weight: 600; font-size: 11.5px; }
+        footer { text-align: center; padding: 20px; font-size: 12px; color: var(--muted); }
+        @media (max-width: 600px) { .ads-grid, .charts-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="topbar">
+        <div class="topbar-inner">
+            <div class="brand">
+                <h1>Bazoš Predictive Sales & Pricing BI</h1>
+                <span class="tag-pro">SR & ČR Engine</span>
+            </div>
+            <div class="context-pill">
+                🌍 Auto-PSČ Počasie &bull; 📅 SR/ČR Sviatky & Payday &bull; 🕒 Sync: 20.11.2026 10:34
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="kpi-strip">
+            <div class="kpi-card">
+                <div class="kpi-title">Ponuková hodnota</div>
+                <div class="kpi-value">370 €</div>
+                <div class="kpi-desc">Cieľová hodnota: 340 €</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-title">Celkový organický zásah</div>
+                <div class="kpi-value">39</div>
+                <div class="kpi-desc">Dnešný prírastok: +39 videní</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-title">Priemerná šanca predaja</div>
+                <div class="kpi-value">96 %</div>
+                <div class="kpi-desc">Predikčný model do 14 dní</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-title">Geolokácia & Kalendár</div>
+                <div class="kpi-value" style="font-size:16px;margin-top:10px;">Dynamic PSČ</div>
+                <div class="kpi-desc">SR + ČR sviatky & výplatné okná</div>
+            </div>
+        </div>
+
+        <div class="ads-grid">
+        <div class="ad-card" style="border-top: 4px solid #2563eb;">
+            <div class="ad-header">
+                <div>
+                    <span class="ad-id">Kočíky & Príslušenstvo &bull; 📍 10713 Kategórie (SK) &bull; ID: 197710713</span>
+                    <h3>Adamex Barletta 3v1 + ISOFIX + Fusak</h3>
+                </div>
+                <span class="badge badge-ok">📈 Dobrý trend (95% šanca)</span>
+            </div>
+
+            <div class="progress-wrap">
+                <div class="progress-labels">
+                    <span>Pravdepodobnosť predaja (Predikčný model)</span>
+                    <strong style="color:#2563eb">95 %</strong>
+                </div>
+                <div class="progress-bar"><div class="progress-fill" style="width:95%;background:#2563eb;"></div></div>
+            </div>
+            
+            <div class="metrics-grid">
+                <div class="metric-box">
+                    <span class="m-label">Celkové videnia</span>
+                    <span class="m-val">26 <small>/ 150</small></span>
+                    <span class="m-sub">Dnes: <strong style="color:#2563eb">+26</strong> (🌧️ Dážď / Sychravo (10.8°C, 1.8 mm))</span>
+                </div>
+                <div class="metric-box">
+                    <span class="m-label">Rýchlosť & Kalendár</span>
+                    <span class="m-val">26.0 <small>/deň</small></span>
+                    <span class="m-sub">Pracovný deň (SK)</span>
+                </div>
+                <div class="metric-box">
+                    <span class="m-label">Ponuková cena</span>
+                    <span class="m-val">260 €</span>
+                    <span class="m-sub">Cieľ: 240 € (vankúš 20 €)</span>
+                </div>
+                <div class="metric-box">
+                    <span class="m-label">Kvalita inzerátu</span>
+                    <span class="m-val">100%</span>
+                    <span class="m-sub">24 fotiek &bull; Cena: V texte</span>
+                </div>
+            </div>
+
+            <div class="summary-box">
+                <p><strong>📊 Čo hovorí toto číslo:</strong> Číslo <strong>26 videní</strong> (17 % benchmarku kategórie <em>Kočíky & Príslušenstvo</em>) predstavuje úvodnú fázu. Skóre kvality inzerátu je <strong>100/100</strong> (24 fotiek), čo dáva pravdepodobnosť predaja <strong>95 %</strong>.</p>
+                <p><strong>🎯 Odporúčaný krok:</strong> Tempo 26.0 videní/deň je optimálne. Najbližšie zlaté okno: <strong>Nedeľa 17:30 – 21:00 a Streda 19:30 – 21:30</strong>.</p>
+                <p class="season-note"><strong>📘 Štatistický návod kategórie:</strong> 1. Zverejniť v nedeľu podvečer (ideálne 10.–18. deň v mesiaci po výplatách). 2. Zdôrazniť čistotu (vypratie), rozmery vaničky a doplnky (Isofix, fusak). 3. Pri 120+ videniach bez obhliadky upraviť cenu o 15–20 € alebo obnoviť na vrch.</p>
+            </div>
+
+            <div class="ad-footer">
+                <span>Sledované: <strong>1 d.</strong> &bull; Špička: <strong>Nedeľ</strong></span>
+                <a href="https://deti.bazos.sk/inzerat/197710713/mega-komplet-adamex-barletta-3v1-isofix-zakladna-rastuci.php" target="_blank" class="btn-link">Otvoriť na Bazoši →</a>
+            </div>
+        </div>
+        
+        <div class="ad-card" style="border-top: 4px solid #0d9488;">
+            <div class="ad-header">
+                <div>
+                    <span class="ad-id">Autosedačky & Bezpečnosť &bull; 📍 12326 Kategórie (SK) &bull; ID: 197712326</span>
+                    <h3>CONCORD Ultimax i-Size + ISOFIX</h3>
+                </div>
+                <span class="badge badge-ok">📈 Dobrý trend (96% šanca)</span>
+            </div>
+
+            <div class="progress-wrap">
+                <div class="progress-labels">
+                    <span>Pravdepodobnosť predaja (Predikčný model)</span>
+                    <strong style="color:#0d9488">96 %</strong>
+                </div>
+                <div class="progress-bar"><div class="progress-fill" style="width:96%;background:#0d9488;"></div></div>
+            </div>
+            
+            <div class="metrics-grid">
+                <div class="metric-box">
+                    <span class="m-label">Celkové videnia</span>
+                    <span class="m-val">13 <small>/ 90</small></span>
+                    <span class="m-sub">Dnes: <strong style="color:#0d9488">+13</strong> (🌧️ Dážď / Sychravo (10.8°C, 1.8 mm))</span>
+                </div>
+                <div class="metric-box">
+                    <span class="m-label">Rýchlosť & Kalendár</span>
+                    <span class="m-val">13.0 <small>/deň</small></span>
+                    <span class="m-sub">Pracovný deň (SK)</span>
+                </div>
+                <div class="metric-box">
+                    <span class="m-label">Ponuková cena</span>
+                    <span class="m-val">110 €</span>
+                    <span class="m-sub">Cieľ: 100 € (vankúš 10 €)</span>
+                </div>
+                <div class="metric-box">
+                    <span class="m-label">Kvalita inzerátu</span>
+                    <span class="m-val">100%</span>
+                    <span class="m-sub">8 fotiek &bull; Cena: V texte</span>
+                </div>
+            </div>
+
+            <div class="summary-box">
+                <p><strong>📊 Čo hovorí toto číslo:</strong> Číslo <strong>13 videní</strong> (14 % benchmarku kategórie <em>Autosedačky & Bezpečnosť</em>) predstavuje úvodnú fázu. Skóre kvality inzerátu je <strong>100/100</strong> (8 fotiek), čo dáva pravdepodobnosť predaja <strong>96 %</strong>.</p>
+                <p><strong>🎯 Odporúčaný krok:</strong> Tempo 13.0 videní/deň je optimálne. Najbližšie zlaté okno: <strong>Pracovné dni 20:00 – 22:00 a Nedeľa večer</strong>.</p>
+                <p class="season-note"><strong>📘 Štatistický návod kategórie:</strong> 1. Uviesť normu (i-Size / ECE R129), hmotnostný/výškový rozsah a testy ADAC hneď v úvode. 2. Obnovovať pred víkendmi a sviatkami (cestovanie). 3. Držať cenu v zóne 50–60 % nového kusu.</p>
+            </div>
+
+            <div class="ad-footer">
+                <span>Sledované: <strong>1 d.</strong> &bull; Špička: <strong>Pr</strong></span>
+                <a href="https://deti.bazos.sk/inzerat/197712326/concord-ultimax-i-size-40105-cm-s-isofix-zakladnou.php" target="_blank" class="btn-link">Otvoriť na Bazoši →</a>
+            </div>
+        </div>
+        </div>
+
+        <div class="charts-grid">
+            <div class="panel" style="margin-bottom:0;">
+                <h2>📈 Kumulatívna krivka záujmu (Celkové videnia)</h2>
+                <canvas id="cumulativeChart" height="140"></canvas>
+            </div>
+            <div class="panel" style="margin-bottom:0;">
+                <h2>📊 Denná dynamika prírastkov (Videnia / deň)</h2>
+                <canvas id="dailyChart" height="140"></canvas>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>📘 Štatistický manuál: Kedy a ako predať konkrétny typ produktu</h2>
+            <div style="overflow-x:auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Kategória produktu</th>
+                            <th>Zlaté časové okno</th>
+                            <th>Šanca predaja do 14 dní</th>
+                            <th>Odporúčaný postup krok za krokom</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Kočíky (3v1, športové)</strong></td>
+                            <td>Nedeľa 17:30–21:00, Streda večer</td>
+                            <td><strong>75 – 85 %</strong></td>
+                            <td>Zverejniť po výplatách (10.–18. v mesiaci), uviesť rozmery vaničky a rámu, pri 120+ videniach obnoviť.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Autosedačky (i-Size)</strong></td>
+                            <td>Pracovné dni 20:00–22:00, Nedeľa</td>
+                            <td><strong>80 – 90 %</strong></td>
+                            <td>Uviesť normu ECE R129 a testy ADAC, obnovovať pred sviatkami a prázdninami.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Detské oblečenie & Obuv</strong></td>
+                            <td>Piatok večer, Nedeľa podvečer</td>
+                            <td><strong>70 – 85 %</strong></td>
+                            <td>Spájať do balíkov podľa veľkosti, obnovovať pri náhlom ochladení alebo daždi.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Bicykle, Odrážadlá & Hračky</strong></td>
+                            <td>Štvrtok – Nedeľa večer</td>
+                            <td><strong>85 – 95 %</strong></td>
+                            <td>Športové veci nahodiť vo štvrtok pred slnečným víkendom; hračky v daždivých dňoch.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>🗂️ Auditný denník meraní (PSČ Lokalita + Počasie + Predikcia)</h2>
+            <div style="overflow-x:auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Dátum</th>
+                            <th>PSČ / Mesto</th>
+                            <th>Kalendár (SR/ČR)</th>
+                            <th>Počasie</th>
+                            <th>Inzerát</th>
+                            <th>Videnia</th>
+                            <th>Šanca</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            <tr>
+                <td>2026-11-20</td>
+                <td>10713 Kategórie (SK)</td>
+                <td>Piatok <small style="color:#64748b">(Pracovný deň (SK))</small></td>
+                <td>🌧️ Dážď / Sychravo (10.8°C, 1.8 mm)</td>
+                <td><strong>Adamex Barletta 3v1 + ISOFIX + Fusak</strong></td>
+                <td>26 <span class="pill-gain">+26</span></td>
+                <td><strong>95%</strong></td>
+            </tr>
+            
+            <tr>
+                <td>2026-11-20</td>
+                <td>12326 Kategórie (SK)</td>
+                <td>Piatok <small style="color:#64748b">(Pracovný deň (SK))</small></td>
+                <td>🌧️ Dážď / Sychravo (10.8°C, 1.8 mm)</td>
+                <td><strong>CONCORD Ultimax i-Size + ISOFIX</strong></td>
+                <td>13 <span class="pill-gain">+13</span></td>
+                <td><strong>96%</strong></td>
+            </tr>
+            </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        End-to-End Predictive Pricing & Behavioral BI &bull; SR & ČR Localization, Open-Meteo & Chart.js
+    </footer>
+
+    <script>
+        new Chart(document.getElementById('cumulativeChart'), {
+            type: 'line', data: { labels: ["2026-11-20"], datasets: [{"label": "Adamex Barletta 3v1 + ISOFIX + Fusak", "data": [26], "borderColor": "#2563eb", "backgroundColor": "#2563eb20", "borderWidth": 2.5, "tension": 0.35, "fill": true}, {"label": "CONCORD Ultimax i-Size + ISOFIX", "data": [13], "borderColor": "#0d9488", "backgroundColor": "#0d948820", "borderWidth": 2.5, "tension": 0.35, "fill": true}] },
+            options: { responsive: true, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true } } }
+        });
+        new Chart(document.getElementById('dailyChart'), {
+            type: 'bar', data: { labels: ["2026-11-20"], datasets: [{"label": "Adamex Barletta 3v1 + ISOFIX + Fusak", "data": [26], "backgroundColor": "#2563eb", "borderRadius": 4}, {"label": "CONCORD Ultimax i-Size + ISOFIX", "data": [13], "backgroundColor": "#0d9488", "borderRadius": 4}] },
+            options: { responsive: true, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true } } }
+        });
+    </script>
+</body>
+</html>
