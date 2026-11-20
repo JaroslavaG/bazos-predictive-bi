@@ -129,7 +129,6 @@ def extract_location_from_bazos(soup, text, url):
     lat, lon = None, None
     psc, city = None, None
 
-    # 1. Hľadanie priamo v odkaze na lokalitu (Bazoš má <a title="Približná lokalita">040 23</a> <a ...>Košice</a>)
     loc_link = soup.find('a', title=re.compile(r'Približná lokalita|Přibližná lokalita', re.I))
     if loc_link:
         psc_candidate = loc_link.get_text(strip=True)
@@ -144,7 +143,6 @@ def extract_location_from_bazos(soup, text, url):
             if m_coords:
                 lat, lon = float(m_coords.group(1)), float(m_coords.group(2))
 
-    # 2. Ak nebol nájdený priamy tag, hľadáme v texte striktne formát "XXX XX Mesto" (s medzerou v PSČ)
     if not psc or not city:
         m_psc = re.search(
             r'(?<!\d)(\d{3}\s\d{2})\s+([A-ZÁÄČĎÉÍĹĽŇÓÔŔŠŤÚÝŽĚŘŮ][a-záčďéíĺľňóôŕšťúýžěřůA-ZÁÄČĎÉÍĹĽŇÓÔŔŠŤÚÝŽĚŘŮ\s-]{2,25})',
@@ -157,7 +155,6 @@ def extract_location_from_bazos(soup, text, url):
     if not psc or not city:
         psc, city = ("110 00", "Praha") if country == "CZ" else ("040 23", "Košice")
 
-    # 3. GPS z mapového odkazu alebo geokódovania
     if lat is None or lon is None:
         for a in soup.find_all('a', href=True):
             if 'google.com/maps/place/' in a['href']:
@@ -296,18 +293,14 @@ def calculate_sale_probability(ad, views, daily_gain, days_active, velocity, qua
     profile = CATEGORY_PROFILES.get(cat_key, CATEGORY_PROFILES["kocik"])
     benchmark = ad.get("benchmark_videni", profile["default_benchmark"])
 
-    # Začíname na realistickej báze (40 - 48 %)
     prob = profile["base_prob"]
 
-    # Bonus za kvalitu prezentácie (fotky + presné rozmery)
     if quality_score >= 85:
         prob += 5
     elif quality_score < 50:
         prob -= 10
 
-    # Vplyv reálneho záujmu a histórie dát
     if days_active == 1:
-        # V prvý deň ešte nemáme trend, hodnotíme len úvodný záber
         if views >= 15:
             prob += 6
         elif views < 5:
@@ -320,7 +313,6 @@ def calculate_sale_probability(ad, views, daily_gain, days_active, velocity, qua
         elif velocity < 2.5:
             prob -= 15
 
-    # Externé faktory (výplatné okno, počasie, víkend)
     if cal["is_payday_window"]:
         prob += 4
     if weather["is_bad_weather"]:
@@ -328,7 +320,6 @@ def calculate_sale_probability(ad, views, daily_gain, days_active, velocity, qua
     if cal["weekday_idx"] == 6:
         prob += 4
 
-    # Únava publika (veľa videní bez predaja alebo starý inzerát)
     if views > benchmark * 1.1:
         prob -= 18
     if days_active > 14:
@@ -502,7 +493,7 @@ def generate_html_dashboard(ads, rows, summaries, ad_contexts, filepath=DASHBOAR
                 <div class="metric-box">
                     <span class="m-label">Celkové videnia</span>
                     <span class="m-val">{latest_views} <small>/ {s['benchmark']}</small></span>
-                    <span class="m-sub">Dnes: <strong style="color:{color}">+{latest_gain}</strong> ({ctx['weather']['summary']})</span>
+                    <span class="m-sub">Dnes: <strong style="color:{color}">+{latest_gain}</strong> &bull; {ctx['weather']['summary']}</span>
                 </div>
                 <div class="metric-box">
                     <span class="m-label">Rýchlosť & Kalendár</span>
@@ -528,7 +519,7 @@ def generate_html_dashboard(ads, rows, summaries, ad_contexts, filepath=DASHBOAR
             </div>
 
             <div class="ad-footer">
-                <span>Sledované: <strong>{days_active} d.</strong> &bull; Špička: <strong>{s['profile']['peak_window'].split('a')[0]}</strong></span>
+                <span>Sledované: <strong>{days_active} d.</strong> &bull; Špička: <strong>{s['profile']['peak_window'].split(' a ')[0]}</strong></span>
                 <a href="{ad['url']}" target="_blank" class="btn-link">Otvoriť na Bazoši →</a>
             </div>
         </div>
