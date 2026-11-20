@@ -716,7 +716,8 @@ def generate_html_dashboard(ads, rows, summaries, ad_contexts, filepath=DASHBOAR
             type: 'bar', data: {{ labels: {json.dumps(dates)}, datasets: {json.dumps(daily_datasets)} }},
             options: {{ responsive: true, plugins: {{ legend: {{ position: 'bottom' }} }}, scales: {{ y: {{ beginAtZero: true }} }} }}
         }});
-    </script>
+        </script>
+    <script src="i18n.js"></script>
 </body>
 </html>"""
 
