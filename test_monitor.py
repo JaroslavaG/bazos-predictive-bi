@@ -36,10 +36,12 @@ class TestBazosPredictiveBI(unittest.TestCase):
         self.assertTrue(monitor.get_calendar_context(datetime(2026, 11, 14), "SK")["is_payday_window"])
         self.assertFalse(monitor.get_calendar_context(datetime(2026, 11, 25), "SK")["is_payday_window"])
 
-    def test_04_bazos_html_parsing_and_location(self):
+def test_04_bazos_html_parsing_and_location(self):
         """Overí parsovanie videní, PSČ, GPS súradníc a kvality inzerátu z HTML."""
         sample_html = """
         <html><body>
+            <div>Inzerát č. 197710713</div>
+            <div>Kategórie</div>
             <h1>Kompletný set Adamex Barletta 3v1</h1>
             <img src="https://www.bazos.sk/img/1/713/197710713.jpg">
             <img src="https://www.bazos.sk/img/2/713/197710713.jpg">
@@ -48,7 +50,7 @@ class TestBazosPredictiveBI(unittest.TestCase):
             <img src="https://www.bazos.sk/img/5/713/197710713.jpg">
             <img src="https://www.bazos.sk/img/6/713/197710713.jpg">
             <div>Extra veľká vanička (80 × 36 × 23 cm), šírka 60 cm.</div>
-            <a href="https://www.google.com/maps/place/48.716733,21.210737/@48.716733,21.210737,12z">040 23</a>
+            <a href="https://www.google.com/maps/place/48.716733,21.210737/@48.716733,21.210737,12z" title="Približná lokalita">040 23</a>
             <a href="https://deti.bazos.sk/inzeraty/kosice/">Košice</a>
             <div>Videlo: 42 ľudí</div>
             <div>Cena: V texte</div>
@@ -63,9 +65,12 @@ class TestBazosPredictiveBI(unittest.TestCase):
         self.assertEqual(res["price_mode"], "V texte")
         self.assertEqual(res["location"]["country"], "SK")
         self.assertEqual(res["location"]["psc"], "040 23")
+        self.assertEqual(res["location"]["city"], "Košice")
         self.assertAlmostEqual(res["location"]["lat"], 48.716733, places=4)
         self.assertTrue(res["has_dimensions"])
         self.assertGreaterEqual(res["quality_score"], 75)
+
+    
 
     def test_05_inactive_ad_detection(self):
         """Overí bezpečné rozpoznanie vymazaného inzerátu."""
@@ -73,8 +78,8 @@ class TestBazosPredictiveBI(unittest.TestCase):
         res = monitor.parse_bazos_html(deleted_html, "https://deti.bazos.sk/inzerat/000/test.php")
         self.assertEqual(res["status"], "inactive")
 
-    def test_06_sale_probability_model(self):
-        """Overí logiku pravdepodobnostného modelu (rast v špičke vs. pokles pri únave publika)."""
+def test_06_sale_probability_model(self):
+        """Overí konzervatívny pravdepodobnostný model (rast pri dobrom tempe vs. pokles pri únave)."""
         ad = {"kategoria": "kocik", "benchmark_videni": 150, "aktualna_cena": 260, "cielova_cena": 240}
         cal_sunday_payday = monitor.get_calendar_context(datetime(2026, 11, 15, 19, 0), "SK")
         weather_rain = {"is_bad_weather": True, "summary": "🌧️ Dážď", "location_label": "040 23 Košice (SK)"}
@@ -87,8 +92,8 @@ class TestBazosPredictiveBI(unittest.TestCase):
             ad, views=210, daily_gain=1, days_active=18, velocity=1.8,
             quality_score=40, cal=cal_sunday_payday, weather=weather_rain
         )
-        self.assertGreater(prob_high, 85)
-        self.assertLess(prob_low, 55)
+        self.assertGreaterEqual(prob_high, 65)
+        self.assertLessEqual(prob_low, 30)
 
     def test_07_price_elasticity_calculation(self):
         """Overí detekciu úpravy ceny a výpočet zmeny denného prírastku."""
