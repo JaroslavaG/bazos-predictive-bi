@@ -213,7 +213,6 @@ def extract_live_price(soup, text):
     price_mode = "V texte"
     parsed_price = None
 
-    # 1. Kontrola bunky "Cena:" v hlavnej tabuľke inzerátu (ignoruje odporúčané inzeráty dole)
     cena_label_td = soup.find('td', string=re.compile(r'^\s*Cena:\s*$', re.I))
     if cena_label_td:
         cena_val_td = cena_label_td.find_next_sibling('td')
@@ -224,7 +223,6 @@ def extract_live_price(soup, text):
                 price_mode = val_text
                 parsed_price = int(m_num.group(1))
 
-    # 2. Ak je cena "V texte", vytiahneme konkrétnu sumu z popisu daného inzerátu
     if parsed_price is None:
         text_before_footer = text.split("Ďalšie inzeráty")[0].split("Podobné inzeráty")[0]
         m_explicit = re.search(r'(?:Cena|cena)\s*[:\-]?\s*(\d+)\s*(?:€|eur|Kč)', text_before_footer)
@@ -254,7 +252,6 @@ def parse_bazos_html(html, url, ad_id=""):
 
     price_mode, parsed_price = extract_live_price(soup, text)
 
-    # Presný počet fotiek a titulná fotka iba pre dané ID inzerátu
     if ad_id:
         thumb_imgs = set(
             img['src'].split('?')[0] for img in soup.find_all('img', src=True)
@@ -853,7 +850,6 @@ def main():
         cal = get_calendar_context(now_dt, country=loc["country"])
         weather = get_weather_for_location(loc)
 
-        # Použije živú cenu vytiahnutú priamo zo stránky/textu inzerátu (ak existuje), inak z inzeraty.json
         effective_price = details["parsed_price"] if details.get("parsed_price") is not None else ad['aktualna_cena']
 
         views = details["views"]
@@ -869,10 +865,10 @@ def main():
         velocity = round(views / days_active, 1)
         elasticity = analyze_price_elasticity(ad_rows_temp, effective_price)
 
-summary = build_automated_summary(
+        summary = build_automated_summary(
             ad, details, daily_gain, days_active, velocity, cal, weather, elasticity, effective_price=effective_price
         )
-                summaries[ad_id] = summary
+        summaries[ad_id] = summary
         ad_contexts[ad_id] = {"details": details, "cal": cal, "weather": weather}
 
         rows = [r for r in rows if not (r['id'] == ad_id and r['datum'] == today_str)]
