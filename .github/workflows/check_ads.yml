@@ -1,0 +1,43 @@
+name: Strazca inzeratov Bazos (CI/CD + Predictive BI)
+
+on:
+  schedule:
+    # Spustí sa automaticky každý deň o 17:00 UTC (18:00 SEČ)
+    - cron: '0 17 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  test-and-monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Stiahnutie repozitára
+        uses: actions/checkout@v4
+
+      - name: Nastavenie Pythonu
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Inštalácia závislostí
+        run: pip install -r requirements.txt
+
+      - name: Spustenie automatizovaných unit a integračných testov
+        run: python -m unittest discover -v
+
+      - name: Spustenie zberu dát, analýzy a generovania BI dashboardu
+        env:
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+        run: python monitor.py
+
+      - name: Uloženie výsledkov (CSV + HTML dashboard)
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "Bazos Predictive BI"
+          git add historia_videni.csv index.html
+          git commit -m "Aktualizácia štatistík, počasia a predikčného dashboardu" || exit 0
+          git push
