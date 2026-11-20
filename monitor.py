@@ -33,40 +33,40 @@ FIXED_HOLIDAYS_CZ = {
     "12-24": "Štědrý den", "12-25": "1. svátek vánoční", "12-26": "2. svátek vánoční"
 }
 
+# Realistickejšie, konzervatívne bázy pravdepodobnosti predaja do 14 dní
 CATEGORY_PROFILES = {
     "kocik": {
         "label": "Kočíky & Príslušenstvo",
         "peak_window": "Nedeľa 17:30 – 21:00 a Streda 19:30 – 21:30",
         "best_step": "1. Zverejniť v nedeľu podvečer (ideálne 10.–18. deň v mesiaci po výplatách). 2. Zdôrazniť čistotu (vypratie), rozmery vaničky a doplnky (Isofix, fusak). 3. Pri 120+ videniach bez obhliadky upraviť cenu o 15–20 € alebo obnoviť na vrch.",
-        "base_prob": 78,
+        "base_prob": 42,
         "default_benchmark": 150
     },
     "autosedacka": {
         "label": "Autosedačky & Bezpečnosť",
         "peak_window": "Pracovné dni 20:00 – 22:00 a Nedeľa večer",
         "best_step": "1. Uviesť normu (i-Size / ECE R129), hmotnostný/výškový rozsah a testy ADAC hneď v úvode. 2. Obnovovať pred víkendmi a sviatkami (cestovanie). 3. Držať cenu v zóne 50–60 % nového kusu.",
-        "base_prob": 84,
+        "base_prob": 48,
         "default_benchmark": 90
     },
     "oblecenie": {
         "label": "Detské oblečenie & Obuv",
         "peak_window": "Piatok večer a Nedeľa 18:00 – 21:30",
         "best_step": "1. Zlučovať do veľkostných balíkov (vyššia hodnota pre kupujúceho). 2. Načasovať obnovenie presne pri ochladení alebo zmene ročného obdobia.",
-        "base_prob": 74,
+        "base_prob": 40,
         "default_benchmark": 60
     },
     "sport_hracky": {
         "label": "Hračky, Bicykle & Šport",
         "peak_window": "Štvrtok – Nedeľa večer",
         "best_step": "1. Šport a bicykle obnovovať vo štvrtok večer pred slnečným víkendom. 2. Hračky cieliť na daždivé dni a obdobie pred sviatkami.",
-        "base_prob": 82,
+        "base_prob": 45,
         "default_benchmark": 70
     }
 }
 
 
 def get_easter_sunday(year):
-    """Vypočíta dátum Veľkonočnej nedele pre ľubovoľný rok (Meeus/Jones/Butcher)."""
     a = year % 19
     b = year // 100
     c = year % 100
@@ -124,26 +124,47 @@ def get_calendar_context(dt, country="SK"):
 
 
 def extract_location_from_bazos(soup, text, url):
-    """Automaticky určí krajinu (SK/CZ), PSČ, mesto a GPS súradnice z inzerátu."""
+    """Presná extrakcia PSČ (XXX XX), mesta a GPS priamo zo štruktúry Bazoša."""
     country = "CZ" if ".cz" in url.lower() else "SK"
     lat, lon = None, None
+    psc, city = None, None
 
-    for a in soup.find_all('a', href=True):
-        if 'google.com/maps/place/' in a['href']:
-            m_coords = re.search(r'place/([-0-9.]+),([-0-9.]+)', a['href'])
+    # 1. Hľadanie priamo v odkaze na lokalitu (Bazoš má <a title="Približná lokalita">040 23</a> <a ...>Košice</a>)
+    loc_link = soup.find('a', title=re.compile(r'Približná lokalita|Přibližná lokalita', re.I))
+    if loc_link:
+        psc_candidate = loc_link.get_text(strip=True)
+        if re.match(r'^\d{3}\s\d{2}$', psc_candidate):
+            psc = psc_candidate
+            next_a = loc_link.find_next_sibling('a')
+            if next_a:
+                city = next_a.get_text(strip=True)
+
+        if 'google.com/maps/place/' in loc_link.get('href', ''):
+            m_coords = re.search(r'place/([-0-9.]+),([-0-9.]+)', loc_link['href'])
             if m_coords:
                 lat, lon = float(m_coords.group(1)), float(m_coords.group(2))
-                break
 
-    m_psc = re.search(
-        r'(\d{3}\s?\d{2})\s+([A-ZÁÄČĎÉÍĹĽŇÓÔŔŠŤÚÝŽĚŘŮ][a-záčďéíĺľňóôŕšťúýžěřůA-ZÁÄČĎÉÍĹĽŇÓÔŔŠŤÚÝŽĚŘŮ\s-]+)',
-        text
-    )
-    if m_psc:
-        psc = m_psc.group(1).strip()
-        city = m_psc.group(2).strip().split('\n')[0].strip()
-    else:
-        psc, city = ("110 00", "Praha") if country == "CZ" else ("040 01", "Košice")
+    # 2. Ak nebol nájdený priamy tag, hľadáme v texte striktne formát "XXX XX Mesto" (s medzerou v PSČ)
+    if not psc or not city:
+        m_psc = re.search(
+            r'(?<!\d)(\d{3}\s\d{2})\s+([A-ZÁÄČĎÉÍĹĽŇÓÔŔŠŤÚÝŽĚŘŮ][a-záčďéíĺľňóôŕšťúýžěřůA-ZÁÄČĎÉÍĹĽŇÓÔŔŠŤÚÝŽĚŘŮ\s-]{2,25})',
+            text
+        )
+        if m_psc:
+            psc = m_psc.group(1).strip()
+            city = m_psc.group(2).strip().split('\n')[0].strip()
+
+    if not psc or not city:
+        psc, city = ("110 00", "Praha") if country == "CZ" else ("040 23", "Košice")
+
+    # 3. GPS z mapového odkazu alebo geokódovania
+    if lat is None or lon is None:
+        for a in soup.find_all('a', href=True):
+            if 'google.com/maps/place/' in a['href']:
+                m_coords = re.search(r'place/([-0-9.]+),([-0-9.]+)', a['href'])
+                if m_coords:
+                    lat, lon = float(m_coords.group(1)), float(m_coords.group(2))
+                    break
 
     if lat is None or lon is None:
         try:
@@ -191,7 +212,6 @@ def get_weather_for_location(loc):
 
 
 def parse_bazos_html(html, url):
-    """Parsuje HTML inzerátu a vracia štruktúrované metriky."""
     soup = BeautifulSoup(html, 'html.parser')
     text = soup.get_text()
 
@@ -237,7 +257,6 @@ def get_ad_details(url):
 
 
 def analyze_price_elasticity(ad_rows, current_price):
-    """Vyhodnotí zmenu ceny v histórii a spočíta koeficient reakcie publika."""
     if len(ad_rows) < 2:
         return None
     prices = [float(r['cena']) for r in ad_rows if r.get('cena')]
@@ -272,37 +291,50 @@ def analyze_price_elasticity(ad_rows, current_price):
 
 
 def calculate_sale_probability(ad, views, daily_gain, days_active, velocity, quality_score, cal, weather):
-    """Vypočíta aktuálnu štatistickú pravdepodobnosť realizácie predaja v %."""
+    """Konzervatívny, realistický model pravdepodobnosti predaja do 14 dní (%)."""
     cat_key = ad.get("kategoria", "kocik")
     profile = CATEGORY_PROFILES.get(cat_key, CATEGORY_PROFILES["kocik"])
     benchmark = ad.get("benchmark_videni", profile["default_benchmark"])
 
+    # Začíname na realistickej báze (40 - 48 %)
     prob = profile["base_prob"]
 
+    # Bonus za kvalitu prezentácie (fotky + presné rozmery)
     if quality_score >= 85:
-        prob += 6
+        prob += 5
     elif quality_score < 50:
         prob -= 10
 
-    if velocity >= 8:
-        prob += 7
-    elif velocity < 2.5 and days_active >= 3:
-        prob -= 14
+    # Vplyv reálneho záujmu a histórie dát
+    if days_active == 1:
+        # V prvý deň ešte nemáme trend, hodnotíme len úvodný záber
+        if views >= 15:
+            prob += 6
+        elif views < 5:
+            prob -= 6
+    else:
+        if velocity >= 10:
+            prob += 14
+        elif velocity >= 5:
+            prob += 7
+        elif velocity < 2.5:
+            prob -= 15
 
+    # Externé faktory (výplatné okno, počasie, víkend)
     if cal["is_payday_window"]:
-        prob += 5
-
-    if weather["is_bad_weather"]:
         prob += 4
+    if weather["is_bad_weather"]:
+        prob += 3
     if cal["weekday_idx"] == 6:
-        prob += 5
+        prob += 4
 
-    if views > benchmark * 1.2:
+    # Únava publika (veľa videní bez predaja alebo starý inzerát)
+    if views > benchmark * 1.1:
         prob -= 18
     if days_active > 14:
         prob -= 15
 
-    return max(10, min(96, round(prob)))
+    return max(10, min(88, round(prob)))
 
 
 def build_automated_summary(ad, details, daily_gain, days_active, velocity, cal, weather, elasticity=None):
@@ -327,7 +359,7 @@ def build_automated_summary(ad, details, daily_gain, days_active, velocity, cal,
         meaning = (
             f"Číslo <strong>{views} videní</strong> ({pct_bench} % benchmarku kategórie <em>{profile['label']}</em>) "
             f"predstavuje úvodnú fázu. Skóre kvality inzerátu je <strong>{q_score}/100</strong> ({details['img_count']} fotiek), "
-            f"čo dáva pravdepodobnosť predaja <strong>{sale_prob} %</strong>.{elasticity_note}"
+            f"čo dáva realistickú pravdepodobnosť predaja do 14 dní <strong>{sale_prob} %</strong>.{elasticity_note}"
         )
     elif views < benchmark:
         meaning = (
@@ -716,7 +748,7 @@ def generate_html_dashboard(ads, rows, summaries, ad_contexts, filepath=DASHBOAR
             type: 'bar', data: {{ labels: {json.dumps(dates)}, datasets: {json.dumps(daily_datasets)} }},
             options: {{ responsive: true, plugins: {{ legend: {{ position: 'bottom' }} }}, scales: {{ y: {{ beginAtZero: true }} }} }}
         }});
-        </script>
+    </script>
     <script src="i18n.js"></script>
 </body>
 </html>"""
