@@ -208,7 +208,7 @@ def get_weather_for_location(loc):
         return {"location_label": f"{loc['psc']} {loc['city']}", "summary": "Neznáme", "is_bad_weather": False}
 
 
-def parse_bazos_html(html, url):
+def parse_bazos_html(html, url, ad_id):
     soup = BeautifulSoup(html, 'html.parser')
     text = soup.get_text()
 
@@ -217,13 +217,38 @@ def parse_bazos_html(html, url):
 
     match_views = re.search(r'Videlo:\s*(\d+)\s*ľudí', text)
     views = int(match_views.group(1)) if match_views else 0
-    price_mode = "V texte" if "V texte" in text else "Číselná"
 
-    img_srcs = set(
-        img['src'] for img in soup.find_all('img', src=True)
-        if '/img/' in img['src'] and not img['src'].endswith('next.svg')
+    # 1. Presná detekcia ceny z hlavnej tabuľky (ignoruje slová "V texte" z podobných inzerátov dole)
+    numeric_price = None
+    for b_tag in soup.find_all('b'):
+        b_text = b_tag.get_text(" ", strip=True)
+        if re.search(r'\d+\s*(€|Kč)', b_text):
+            numeric_price = b_text
+            break
+    price_mode = numeric_price if numeric_price else "V texte"
+
+    # 2. Presný počet fotiek a titulná fotka iba pre dané ID inzerátu
+    thumb_imgs = set(
+        img['src'].split('?')[0] for img in soup.find_all('img', src=True)
+        if re.search(rf'/img/\d+t/.*?/{re.escape(ad_id)}\.jpg', img['src'])
     )
-    img_count = len(img_srcs)
+    full_imgs = set(
+        img['src'].split('?')[0] for img in soup.find_all('img', src=True)
+        if re.search(rf'/img/\d+/.*?/{re.escape(ad_id)}\.jpg', img['src'])
+    )
+    img_count = len(thumb_imgs) if thumb_imgs else len(full_imgs)
+
+    # Titulná fotka (hlavný obrázok /img/1/.../{ad_id}.jpg)
+    thumbnail_url = ""
+    for src in sorted(full_imgs):
+        if f"/img/1/" in src:
+            thumbnail_url = src
+            break
+    if not thumbnail_url and full_imgs:
+        thumbnail_url = sorted(full_imgs)[0]
+    elif not thumbnail_url and thumb_imgs:
+        thumbnail_url = sorted(thumb_imgs)[0]
+
     has_dimensions = bool(re.search(r'\b\d+\s*[×x]\s*\d+|\b\d+\s*cm\b|\b\d+[.,]?\d*\s*kg\b', text))
     quality_score = min(100, (min(img_count, 8) * 8) + (20 if has_dimensions else 0) + (16 if len(text) > 500 else 8))
 
@@ -235,19 +260,20 @@ def parse_bazos_html(html, url):
         "price_mode": price_mode,
         "quality_score": quality_score,
         "img_count": img_count,
+        "thumbnail_url": thumbnail_url,
         "has_dimensions": has_dimensions,
         "location": location
     }
 
 
-def get_ad_details(url):
+def get_ad_details(url, ad_id):
     req = urllib.request.Request(
         url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
     )
     try:
         with urllib.request.urlopen(req, timeout=15) as response:
             html = response.read().decode('utf-8', errors='ignore')
-        return parse_bazos_html(html, url)
+        return parse_bazos_html(html, url, ad_id)
     except Exception as e:
         print(f"Chyba pri načítaní {url}: {e}")
         return None
@@ -471,12 +497,22 @@ def generate_html_dashboard(ads, rows, summaries, ad_contexts, filepath=DASHBOAR
         total_daily_gain += latest_gain
         prob_list.append(s["sale_prob"])
 
+        thumb_url = ctx['details'].get('thumbnail_url', '')
+        thumb_html = (
+            f'<img src="{thumb_url}" alt="{ad["nazov"]}" class="ad-thumb" '
+            f'onerror="this.style.display=\'none\'">'
+            if thumb_url else ""
+        )
+
         cards_html += f"""
         <div class="ad-card" style="border-top: 4px solid {color};">
             <div class="ad-header">
-                <div>
-                    <span class="ad-id">{s['profile']['label']} &bull; 📍 {ctx['weather']['location_label']} &bull; ID: {ad_id}</span>
-                    <h3>{ad['nazov']}</h3>
+                <div class="ad-title-group">
+                    {thumb_html}
+                    <div>
+                        <span class="ad-id">{s['profile']['label']} &bull; 📍 {ctx['weather']['location_label']} &bull; ID: {ad_id}</span>
+                        <h3>{ad['nazov']}</h3>
+                    </div>
                 </div>
                 <span class="badge badge-{s['status_type']}">{s['status_label']}</span>
             </div>
@@ -580,6 +616,8 @@ def generate_html_dashboard(ads, rows, summaries, ad_contexts, filepath=DASHBOAR
         .ads-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 20px; margin-bottom: 24px; }}
         .ad-card {{ background: var(--surface); border-radius: 12px; padding: 22px; border: 1px solid var(--border); display: flex; flex-direction: column; justify-content: space-between; }}
         .ad-header {{ display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 14px; }}
+        .ad-title-group {{ display: flex; align-items: center; gap: 14px; }}
+        .ad-thumb {{ width: 68px; height: 68px; object-fit: cover; border-radius: 10px; border: 1px solid var(--border); flex-shrink: 0; background: #f1f5f9; }}
         .ad-id {{ font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; }}
         .ad-header h3 {{ margin: 4px 0 0 0; font-size: 16px; font-weight: 700; }}
         .badge {{ font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 99px; white-space: nowrap; }}
@@ -761,7 +799,7 @@ def main():
 
     for ad in ads:
         ad_id = ad['id']
-        details = get_ad_details(ad['url'])
+        details = get_ad_details(ad['url'], ad_id)
         if not details or details["status"] != "active":
             continue
 
