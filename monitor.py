@@ -184,6 +184,7 @@ def extract_location_from_bazos(soup, text, url):
 
     return {"country": country, "psc": psc, "city": city, "lat": lat, "lon": lon}
 
+WEATHER_CACHE = {}
 
 def get_weather_for_location(loc):
     cache_key = (loc['country'], loc['psc'], loc['city'])
