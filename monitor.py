@@ -62,6 +62,13 @@ CATEGORY_PROFILES = {
         "best_step": "1. Šport a bicykle obnovovať vo štvrtok večer pred slnečným víkendom. 2. Hračky cieliť na daždivé dni a obdobie pred sviatkami.",
         "base_prob": 45,
         "default_benchmark": 70
+    },
+    "vybava_nabytok": {
+        "label": "Kolísky, Lehátka & Výbava",
+        "peak_window": "Nedeľa 17:30 – 21:00 a Streda večer",
+        "best_step": "1. Zverejniť v nedeľu podvečer alebo v daždivých dňoch (10.–18. v mesiaci po výplatách). 2. Zdôrazniť čistotu poťahu, nosnosť, polohovanie a bezpečnosť. 3. Pri 90+ videniach bez záujmu upraviť cenu o 5 € alebo obnoviť.",
+        "base_prob": 44,
+        "default_benchmark": 90
     }
 }
 
@@ -781,6 +788,12 @@ def generate_html_dashboard(ads, rows, summaries, ad_contexts, filepath=DASHBOAR
                             <td>Štvrtok – Nedeľa večer</td>
                             <td><strong>85 – 95 %</strong></td>
                             <td>Športové veci nahodiť vo štvrtok pred slnečným víkendom; hračky v daždivých dňoch.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Kolísky, Lehátka & Výbava</strong></td>
+                            <td>Nedeľa 17:30–21:00, Streda večer</td>
+                            <td><strong>75 – 85 %</strong></td>
+                            <td>Zverejniť po výplatách alebo v daždivých dňoch, uviesť nosnosť, rozmery a čistotu poťahu.</td>
                         </tr>
                     </tbody>
                 </table>
