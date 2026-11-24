@@ -186,34 +186,46 @@ def extract_location_from_bazos(soup, text, url):
 
 
 def get_weather_for_location(loc):
+    cache_key = (loc['country'], loc['psc'], loc['city'])
+    if cache_key in WEATHER_CACHE:
+        return WEATHER_CACHE[cache_key]
+
     url = (
         f"https://api.open-meteo.com/v1/forecast?latitude={loc['lat']}&longitude={loc['lon']}"
         "&daily=weather_code,temperature_2m_max,precipitation_sum&timezone=Europe%2FBratislava&forecast_days=1"
     )
-    try:
-        with urllib.request.urlopen(url, timeout=10) as resp:
-            daily = json.loads(resp.read().decode("utf-8"))["daily"]
-        code = daily["weather_code"][0]
-        temp_max = daily["temperature_2m_max"][0]
-        precip = daily["precipitation_sum"][0]
+    for _ in range(2):
+        try:
+            with urllib.request.urlopen(url, timeout=12) as resp:
+                daily = json.loads(resp.read().decode("utf-8"))["daily"]
+            code = daily["weather_code"][0]
+            temp_max = daily["temperature_2m_max"][0]
+            precip = daily["precipitation_sum"][0]
 
-        if code in [0, 1]:
-            desc, is_bad = "☀️ Slnečno", False
-        elif code in [2, 3, 45, 48]:
-            desc, is_bad = "⛅ Oblačno", False
-        elif code in [71, 73, 75, 77, 85, 86]:
-            desc, is_bad = "❄️ Sneženie", True
-        else:
-            desc, is_bad = "🌧️ Dážď / Sychravo", True
+            if code in [0, 1]:
+                desc, is_bad = "☀️ Slnečno", False
+            elif code in [2, 3, 45, 48]:
+                desc, is_bad = "⛅ Oblačno", False
+            elif code in [71, 73, 75, 77, 85, 86]:
+                desc, is_bad = "❄️ Sneženie", True
+            else:
+                desc, is_bad = "🌧️ Dážď / Sychravo", True
 
-        return {
-            "location_label": f"{loc['psc']} {loc['city']} ({loc['country']})",
-            "summary": f"{desc} ({temp_max}°C, {precip} mm)",
-            "is_bad_weather": is_bad
-        }
-    except Exception:
-        return {"location_label": f"{loc['psc']} {loc['city']}", "summary": "Neznáme", "is_bad_weather": False}
+            result = {
+                "location_label": f"{loc['psc']} {loc['city']} ({loc['country']})",
+                "summary": f"{desc} ({temp_max}°C, {precip} mm)",
+                "is_bad_weather": is_bad
+            }
+            WEATHER_CACHE[cache_key] = result
+            return result
+        except Exception:
+            continue
 
+    return {
+        "location_label": f"{loc['psc']} {loc['city']} ({loc['country']})",
+        "summary": "Neznáme",
+        "is_bad_weather": False
+    }
 
 def extract_live_price(soup, text):
     """Vytiahne režim ceny z tabuľky ('V texte' vs. suma) aj reálnu sumu priamo zo stránky inzerátu."""
