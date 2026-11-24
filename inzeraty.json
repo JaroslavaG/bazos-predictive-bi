@@ -28,8 +28,8 @@
     "cielova_cena": 20,
     "min_denny_narast": 3,
     "benchmark_videni": 70
-  }
-
+  },
+   {
     "id": "197861360",
     "kategoria": "Ostatné",
     "nazov": "Kinderkraft Unimo 5v1 Peony Rose – kolíska, lehátko",
@@ -38,5 +38,5 @@
     "cielova_cena": 40,
     "min_denny_narast": 3,
     "benchmark_videni": 70
-  
-]
+    }
+    ]
