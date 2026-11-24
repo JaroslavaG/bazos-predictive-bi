@@ -4,7 +4,7 @@
     "kategoria": "kocik",
     "nazov": "Adamex Barletta 3v1 + ISOFIX + Fusak",
     "url": "https://deti.bazos.sk/inzerat/197710713/mega-komplet-adamex-barletta-3v1-isofix-zakladna-rastuci.php",
-    "aktualna_cena": 260,
+    "aktualna_cena": 240,
     "cielova_cena": 240,
     "min_denny_narast": 3,
     "benchmark_videni": 150
@@ -14,7 +14,7 @@
     "kategoria": "autosedacka",
     "nazov": "CONCORD Ultimax i-Size + ISOFIX",
     "url": "https://deti.bazos.sk/inzerat/197712326/concord-ultimax-i-size-40105-cm-s-isofix-zakladnou.php",
-    "aktualna_cena": 110,
+    "aktualna_cena": 100,
     "cielova_cena": 100,
     "min_denny_narast": 3,
     "benchmark_videni": 90
@@ -24,10 +24,19 @@
     "kategoria": "sport_hracky",
     "nazov": "Fisher-Price Psíkov stolček Smart Stages SK/EN",
     "url": "https://deti.bazos.sk/inzerat/197721729/fisher-price-psikov-stolcek-smart-stages-sken.php",
-    "aktualna_cena": 25,
+    "aktualna_cena": 20,
     "cielova_cena": 20,
     "min_denny_narast": 3,
     "benchmark_videni": 70
   }
+
+    "id": "197861360",
+    "kategoria": "Ostatné",
+    "nazov": "Kinderkraft Unimo 5v1 Peony Rose – kolíska, lehátko",
+    "url": "https://deti.bazos.sk/inzerat/197861360/kinderkraft-unimo-5v1-peony-rose-koliska-lehatko.php",
+    "aktualna_cena": 40,
+    "cielova_cena": 40,
+    "min_denny_narast": 3,
+    "benchmark_videni": 70
   
 ]
